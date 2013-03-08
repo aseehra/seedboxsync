@@ -116,13 +116,14 @@ class Syncer(object):
 
     def execute_sync(self):
         for syncitem in self.sync_settings:
-            cmd_base = '''lftp -c "open -e 'mirror -eR -P2 {opts} {local} {remote}' {server}"'''
+            cmd_base = '''lftp -c "open -e 'mirror -eR -P2 --verbose=1 {opts} {local} {remote}' {server}"'''
             cmd_str = cmd_base.format(server=self.server, **syncitem)
             self.log(cmd_str + '\n')
             cmd = shlex.split(cmd_str)
             with open(self.log_path, 'a') as log:
                 lftp = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=log)
                 lftp.wait()
+                log.write("complete\n")
 
     def log(self, msg):
         with open(self.log_path, 'a') as log:
