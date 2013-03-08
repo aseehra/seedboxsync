@@ -121,7 +121,8 @@ class Syncer(object):
             self.log(cmd_str + '\n')
             cmd = shlex.split(cmd_str)
             with open(self.log_path, 'a') as log:
-                subprocess.Popen(cmd_str, stderr=subprocess.STDOUT, stdout=log)
+                lftp = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=log)
+                lftp.wait()
 
     def log(self, msg):
         with open(self.log_path, 'a') as log:
