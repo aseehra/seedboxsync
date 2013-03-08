@@ -38,6 +38,7 @@ import errno
 import stat
 import atexit
 import subprocess
+import shlex
 
 class SbsException(Exception):
     """ Base class for SeedboxSync exceptions. """
@@ -116,8 +117,11 @@ class Syncer(object):
     def execute_sync(self):
         for syncitem in self.sync_settings:
             cmd_base = '''lftp -c "open -e 'mirror -eR -P2 {opts} {local} {remote}' {server}"'''
-            cmd = cmd_base.format(server=self.server, **syncitem)
-            self.log(cmd + '\n')
+            cmd_str = cmd_base.format(server=self.server, **syncitem)
+            self.log(cmd_str + '\n')
+            cmd = shlex.split(cmd_str)
+            with open(self.log_path, 'a') as log:
+                subprocess.Popen(cmd_str, stderr=subprocess.STDOUT, stdout=log)
 
     def log(self, msg):
         with open(self.log_path, 'a') as log:
