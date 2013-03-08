@@ -123,7 +123,7 @@ class Syncer(object):
             with open(self.log_path, 'a') as log:
                 lftp = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=log)
                 lftp.wait()
-                log.write("complete\n")
+                log.write("DONE\n")
 
     def log(self, msg):
         with open(self.log_path, 'a') as log:
