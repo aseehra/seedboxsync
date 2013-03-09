@@ -108,12 +108,20 @@ class Syncer(object):
                         "Unable to delete IPC file ({:s}).".format(excp))
                 raise error
 
+        if self.fifo is not None:
+            self.fifo.close()
+
     def run(self):
-        with open(self.fifo_path, 'r') as fifo:
-            while True:
-                msg = fifo.readline()
-                self.log('Received: ' + msg)
-                self.execute_sync()
+        self.fifo = open(self.fifo_path, 'r')
+        while True:
+            msg = fifo.readlines()
+            #HACK!!!
+            old_fifo = self.fifo
+            self.fifo = open(self.fifo_path, 'r')
+            old_fifo.close()
+
+            self.log('Received: ' + msg)
+            self.execute_sync()
 
     def execute_sync(self):
         for syncitem in self.sync_settings:
