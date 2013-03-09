@@ -122,7 +122,7 @@ class Syncer(object):
                     msg = fifo.readline()
                     if msg == '':
                         break
-                    self.log('Received:\n' + '\n'.join(msg))
+                    self.log('Received: ' + msg)
                     self.execute_sync()
 
     def execute_sync(self):
