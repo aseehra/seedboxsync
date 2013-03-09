@@ -88,6 +88,8 @@ class Syncer(object):
                 raise SbsOSException(
                       'Could not create IPC file (File exists)')
 
+        self.fifo = None
+        self.fifo2 = None
         atexit.register(self.close)
 
     def make_fifo(self):
@@ -110,15 +112,17 @@ class Syncer(object):
 
         if self.fifo is not None:
             self.fifo.close()
+        if self.fifo2 is not None:
+            self.fifo2.close()
 
     def run(self):
-        self.fifo = open(self.fifo_path, 'r')
         while True:
-            msg = fifo.readlines()
-            #HACK!!!
-            old_fifo = self.fifo
             self.fifo = open(self.fifo_path, 'r')
-            old_fifo.close()
+            if self.fifo2 is not None:
+                self.fifo2.close()
+                self.fifo2 = None
+            msg = self.fifo.readlines()
+            self.fifo2 = self.fifo
 
             self.log('Received:\n' + '\n'.join(msg))
             self.execute_sync()
