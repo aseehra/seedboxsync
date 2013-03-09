@@ -109,9 +109,10 @@ class Syncer(object):
                 raise error
 
     def run(self):
-        while True:
-            with open(self.fifo_path, 'r') as fifo:
-                fifo.readlines()
+        with open(self.fifo_path, 'r') as fifo:
+            while True:
+                msg = fifo.readline()
+                self.log('Received: ' + msg)
                 self.execute_sync()
 
     def execute_sync(self):
