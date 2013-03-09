@@ -117,15 +117,13 @@ class Syncer(object):
 
     def run(self):
         while True:
-            self.fifo = open(self.fifo_path, 'r')
-            if self.fifo2 is not None:
-                self.fifo2.close()
-                self.fifo2 = None
-            msg = self.fifo.readlines()
-            self.fifo2 = self.fifo
-
-            self.log('Received:\n' + '\n'.join(msg))
-            self.execute_sync()
+            with open(self.fifo_path, 'r') as fifo:
+                while True:
+                    msg = fifo.readline()
+                    if msg == '':
+                        break
+                    self.log('Received:\n' + '\n'.join(msg))
+                    self.execute_sync()
 
     def execute_sync(self):
         for syncitem in self.sync_settings:
