@@ -120,7 +120,7 @@ class Syncer(object):
             self.fifo = open(self.fifo_path, 'r')
             old_fifo.close()
 
-            self.log('Received: ' + msg)
+            self.log('Received:\n' + '\n'.join(msg))
             self.execute_sync()
 
     def execute_sync(self):
