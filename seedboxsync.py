@@ -127,7 +127,7 @@ class Syncer(object):
 
     def execute_sync(self):
         for syncitem in self.sync_settings:
-            cmd_base = '''lftp -c "open -e 'mirror -eR -P2 --verbose=1 {opts} {local} {remote}' {server}"'''
+            cmd_base = '''lftp -c "open -e 'mirror -ceR --verbose=1 {opts} {local} {remote}' {server}"'''
             cmd_str = cmd_base.format(server=self.server, **syncitem)
             self.log(cmd_str + '\n')
             cmd = shlex.split(cmd_str)
