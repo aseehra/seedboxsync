@@ -40,6 +40,9 @@ elif [[ "${SRC}" =~ Downton.*Abbey ]] ; then
 elif [[ "${SRC}" =~ W1A ]] ; then
 	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
 	ln "${VIDFILE}" ${DROPBOX}
+elif [[ "${SRC}" =~ Strictly.*Come.*Dancing ]] ; then
+	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
+	ln "${VIDFILE}" ${DROPBOX}
 fi
 
 if [[ -e ${FIFO} ]] ; then
