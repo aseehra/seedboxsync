@@ -6,7 +6,7 @@ LOG=$HOME/.local/var/log/posttorrent.log
 FIFO=$HOME/.local/tmp/seedboxsync.fifo
 TIME=$(date +%Y.%m.%d\ %H:%M:%S)
 SRC=$1
-DROPBOX=$HOME/Dropbox/Seehra
+DROPBOX="$HOME/Dropbox/Samsung Link/Videos"
 
 if [[ ! -a "${SRC}" ]] ; then
 	echo "[${TIME}] Changing name from ${SRC}" >> $LOG
@@ -30,19 +30,22 @@ fi
 shopt -qs nocasematch
 if [[ "${SRC}" =~ Apprentice ]] ; then
 	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
-	ln "${VIDFILE}" ${DROPBOX}
+	ln "${VIDFILE}" "${DROPBOX}"
 elif [[ "${SRC}" =~ British.*Bake ]] ; then
 	VIDFILE=$(find "${SRC}" -iname "*.mp4" -o -iname "*.mkv")
-	ln "${VIDFILE}" ${DROPBOX}
+	ln "${VIDFILE}" "${DROPBOX}"
 elif [[ "${SRC}" =~ Downton.*Abbey ]] ; then
 	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
-	ln "${VIDFILE}" ${DROPBOX}
+	ln "${VIDFILE}" "${DROPBOX}"
 elif [[ "${SRC}" =~ W1A ]] ; then
 	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
-	ln "${VIDFILE}" ${DROPBOX}
+	ln "${VIDFILE}" "${DROPBOX}"
 elif [[ "${SRC}" =~ Strictly.*Come.*Dancing ]] ; then
 	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
-	ln "${VIDFILE}" ${DROPBOX}
+	ln "${VIDFILE}" "${DROPBOX}"
+elif [[ "${SRC}" =~ Liberty.*London ]] ; then
+	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*.mp4")
+	ln "${VIDFILE}" "${DROPBOX}"
 fi
 
 if [[ -e ${FIFO} ]] ; then
