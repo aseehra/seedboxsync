@@ -50,8 +50,8 @@ class Syncer(object):
         self,
         fifo_path=os.path.expanduser('~/.local/tmp/seedboxsync.fifo'),
         log_path=os.path.expanduser('~/.local/var/log/seedboxsync.log'),
-        sync_settings=[{'local':'~/expanded','remote':'~/video/sb-expanded','opts':''},
-                       {'local':'~/completed','remote':'~/video/sb','opts':'-I *.avi -I *.mp4'}
+        sync_settings=[{'local':'~/expanded','remote':'/media/video/expanded','opts':''},
+                       {'local':'~/completed','remote':'/media/video/seedbox','opts':'-I *.avi -I *.mp4 -I *.mkv -I *.m4v -X "*sample[-.]*"'}
                        ],
         server='sftp://schrager.thirtyfivemm.com',
         ):
