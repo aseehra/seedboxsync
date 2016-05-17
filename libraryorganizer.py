@@ -132,5 +132,5 @@ class LibraryOrganizerService(service.Service):
 application = service.Application('libraryorganizer')
 organizer_service = LibraryOrganizerService(
     '/media/video/tv',
-    ['/media/video/seedbox', '/media/video/expanded', '/media/video/watch'])
+    ['/media/video/seedbox', '/media/video/expanded'])
 organizer_service.setServiceParent(application)
