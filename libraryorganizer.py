@@ -45,7 +45,8 @@ from zope.interface import provider
 class LibraryOrganizerService(service.Service):
 
     log = logger.Logger('LibraryOrganizerService')
-    file_matcher = re.compile('(.*)(s\d+e\d+|\d+x\d+)')
+    default_matcher = re.compile('(.*)(s\d+e\d+|\d+x\d+)')
+    shield_matcher = re.compile('(.*)(s.h.i.e.l.d.).*(s\d+e\d+|\d+x\d+)')
 
     def __init__(self, library_dir, watch_dirs):
         self.library_dir = library_dir
@@ -74,15 +75,31 @@ class LibraryOrganizerService(service.Service):
         elif mask == inotify.IN_DELETE:
             self.processDelete(path)
 
+    def getSeries(self, path):
+        normalized_path= path.basename().lower()
+
+        # special case: 's.h.i.e.l.d.'
+        match = self.shield_matcher.search(normalized_path)
+        if match:
+            series_name = ' '.join([match.group(1).replace('.', ' ').strip(), 
+                                    match.group(2)])
+            return series_name
+
+        match = self.default_matcher.search(normalized_path)
+        if match:
+            series_name = match.group(1).replace('.', ' ').strip()
+            return series_name
+
+        return None
+
     def processCreate(self, path):
         if not path.isfile():
             return
         self.log.debug('Processing {path}', path=path.path)
-        match = self.file_matcher.search(path.basename().lower())
-        if not match:
+        series_name = self.getSeries(path)
+        if not series_name:
             return
-        
-        series_name = match.group(1).replace('.', ' ').strip()
+
         series_path = os.path.join(self.library_dir, series_name)
         if not os.path.exists(series_path):
             self.log.debug('Create directory {path}', path=series_path)
@@ -95,11 +112,10 @@ class LibraryOrganizerService(service.Service):
             os.link(path.path, episode_path)
 
     def processDelete(self, path):
-        match = self.file_matcher.search(path.basename().lower())
-        if not match:
+        series_name = self.getSeries(path)
+        if not series_name:
             return
 
-        series_name = match.group(1).replace('.', ' ').strip()
         series_path = os.path.join(self.library_dir, series_name)
         episode_path = os.path.join(series_path, path.basename())
         if os.path.exists(series_path):
