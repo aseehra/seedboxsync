@@ -34,6 +34,8 @@
 import os
 import re
 import sys
+
+import twisted
 from twisted import logger
 from twisted.application import service
 from twisted.internet import inotify
@@ -42,7 +44,7 @@ from zope.interface import provider
 
 class LibraryOrganizerService(service.Service):
 
-    log = logger.Logger('libraryorganizer')
+    log = logger.Logger('LibraryOrganizerService')
     file_matcher = re.compile('(.*)(s\d+e\d+|\d+x\d+)')
 
     def __init__(self, library_dir, watch_dirs):
@@ -63,9 +65,9 @@ class LibraryOrganizerService(service.Service):
         self.notifier.stopReading()
 
     def onChange(self, ignored, path, mask):
-#        self. log.debug('{path}: {mask}',
-#                        path=path.path,
-#                        mask=inotify.humanReadableMask(mask))
+        self.log.debug('{path}: {mask}',
+                       path=path.path,
+                       mask=inotify.humanReadableMask(mask))
 
         if mask == inotify.IN_CREATE:
             self.processCreate(path)
@@ -75,7 +77,7 @@ class LibraryOrganizerService(service.Service):
     def processCreate(self, path):
         if not path.isfile():
             return
-#        self.log.debug('Processing {path}', path=path.path)
+        self.log.debug('Processing {path}', path=path.path)
         match = self.file_matcher.search(path.basename().lower())
         if not match:
             return
@@ -83,13 +85,13 @@ class LibraryOrganizerService(service.Service):
         series_name = match.group(1).replace('.', ' ').strip()
         series_path = os.path.join(self.library_dir, series_name)
         if not os.path.exists(series_path):
-#            self.log.debug('Create directory {path}', path=series_path)
+            self.log.debug('Create directory {path}', path=series_path)
             os.mkdir(series_path)
         episode_path = os.path.join(series_path, path.basename())
         if not os.path.exists(episode_path):
-#            self.log.debug('Linking {orig} : {link}', 
-#                           orig=path.path,
-#                           link=episode_path)
+            self.log.debug('Linking {orig} : {link}', 
+                           orig=path.path,
+                           link=episode_path)
             os.link(path.path, episode_path)
 
     def processDelete(self, path):
@@ -102,10 +104,10 @@ class LibraryOrganizerService(service.Service):
         episode_path = os.path.join(series_path, path.basename())
         if os.path.exists(series_path):
             if os.path.exists(episode_path):
-#                self.log.debug('Deleting {path}', path=episode_path)
+                self.log.debug('Deleting {path}', path=episode_path)
                 os.remove(episode_path)
             if len(os.listdir(series_path)) == 0:
-#                self.log.debug('Deleting {path}', path=series_path)
+                self.log.debug('Deleting {path}', path=series_path)
                 os.rmdir(series_path)
 
     def sync(self):
@@ -124,13 +126,16 @@ class LibraryOrganizerService(service.Service):
                         filepath.FilePath(os.path.join(dirpath, episode)))
 
 
-#observer = logger.FilteringLogObserver(
-#    logger.FileLogObserver(sys.stdout, lambda event: logger.formatEvent(event) + '\n'),
-#    [logger.LogLevelFilterPredicate(defaultLogLevel=logger.LogLevel.info)],)
-#logger.globalLogBeginner.beginLoggingTo([observer])
+consoleLogger = logger.FileLogObserver(
+    sys.stdout, 
+    lambda event: logger.formatEventAsClassicLogText(event))
+observer = logger.FilteringLogObserver(
+    consoleLogger,
+    [logger.LogLevelFilterPredicate(defaultLogLevel=logger.LogLevel.debug)])
 
 application = service.Application('libraryorganizer')
 organizer_service = LibraryOrganizerService(
     '/media/video/tv',
     ['/media/video/seedbox', '/media/video/expanded'])
 organizer_service.setServiceParent(application)
+application.setComponent(twisted.python.log.ILogObserver, observer)
