@@ -47,6 +47,7 @@ class LibraryOrganizerService(service.Service):
     log = logger.Logger('LibraryOrganizerService')
     default_matcher = re.compile('(.*)\D(s\d+e\d+|\d+x\d+)')
     shield_matcher = re.compile('(.*)(s.h.i.e.l.d.).*(s\d+e\d+|\d+x\d+)')
+    date_matcher = re.compile('^(seth.meyers)')
 
     def __init__(self, library_dir, watch_dirs):
         self.library_dir = library_dir
@@ -85,7 +86,9 @@ class LibraryOrganizerService(service.Service):
                                     match.group(2)])
             return series_name
 
-        match = self.default_matcher.search(normalized_path)
+        match = self.date_matcher.search(normalized_path)
+        if not match:
+            match = self.default_matcher.search(normalized_path)
         if match:
             series_name = match.group(1).replace('.', ' ').strip()
             return series_name
