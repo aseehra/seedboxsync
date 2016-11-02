@@ -45,7 +45,7 @@ from zope.interface import provider
 class LibraryOrganizerService(service.Service):
 
     log = logger.Logger('LibraryOrganizerService')
-    default_matcher = re.compile('(.*)(s\d+e\d+|\d+x\d+)')
+    default_matcher = re.compile('(.*)\D(s\d+e\d+|\d+x\d+)')
     shield_matcher = re.compile('(.*)(s.h.i.e.l.d.).*(s\d+e\d+|\d+x\d+)')
 
     def __init__(self, library_dir, watch_dirs):
@@ -147,7 +147,7 @@ consoleLogger = logger.FileLogObserver(
     lambda event: logger.formatEventAsClassicLogText(event))
 observer = logger.FilteringLogObserver(
     consoleLogger,
-    [logger.LogLevelFilterPredicate(defaultLogLevel=logger.LogLevel.debug)])
+    [logger.LogLevelFilterPredicate(defaultLogLevel=logger.LogLevel.info)])
 
 application = service.Application('libraryorganizer')
 organizer_service = LibraryOrganizerService(
