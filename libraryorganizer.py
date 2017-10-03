@@ -46,8 +46,9 @@ class LibraryOrganizerService(service.Service):
 
     log = logger.Logger('LibraryOrganizerService')
     default_matcher = re.compile('(.*)\D(s\d+e\d+|\d+x\d+)')
-    shield_matcher = re.compile('(.*)(s.h.i.e.l.d.).*(s\d+e\d+|\d+x\d+)')
+    shield_matcher = re.compile('(.*)(s.h.i.e.l.d.)')
     date_matcher = re.compile('^(seth.meyers)')
+    librarians_matcher = re.compile('^the.librarians')
 
     def __init__(self, library_dir, watch_dirs):
         self.library_dir = library_dir
@@ -85,6 +86,12 @@ class LibraryOrganizerService(service.Service):
             series_name = ' '.join([match.group(1).replace('.', ' ').strip(), 
                                     match.group(2)])
             return series_name
+
+        # special cases
+        if normalized_path.startswith('timeless'):
+            return 'timeless 2016'
+        if self.librarians_matcher.search(normalized_path):
+            return 'the librarians 2014'
 
         match = self.date_matcher.search(normalized_path)
         if not match:
@@ -130,10 +137,6 @@ class LibraryOrganizerService(service.Service):
                 os.rmdir(series_path)
 
     def sync(self):
-        for directory in self.watch_dirs:
-            for name in os.listdir(directory):
-                self.processCreate(
-                        filepath.FilePath(os.path.join(directory, name)))
         for dirpath, dirnames, filenames in os.walk(self.library_dir):
             for episode in filenames:
                 found = False
@@ -143,6 +146,10 @@ class LibraryOrganizerService(service.Service):
                 if not found:
                     self.processDelete(
                         filepath.FilePath(os.path.join(dirpath, episode)))
+        for directory in self.watch_dirs:
+            for name in os.listdir(directory):
+                self.processCreate(
+                        filepath.FilePath(os.path.join(directory, name)))
 
 
 consoleLogger = logger.FileLogObserver(
