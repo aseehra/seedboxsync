@@ -5,7 +5,7 @@
 
 # Copyright (c) 2016, Arun Seehra
 # All rights reserved.
-# 
+
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 # 1. Redistributions of source code must retain the above copyright notice, this
@@ -34,6 +34,7 @@
 import os
 import re
 import sys
+import time
 
 import twisted
 from twisted import logger
@@ -72,10 +73,10 @@ class LibraryOrganizerService(service.Service):
                        path=path.path,
                        mask=inotify.humanReadableMask(mask))
 
-        if mask == inotify.IN_CREATE:
+        if mask & inotify.IN_CREATE:
             self.processCreate(path)
-        elif mask == inotify.IN_DELETE:
-            self.processDelete(path)
+        elif mask & inotify.IN_DELETE:
+            self.processDelete(path, mask & inotify.IN_ISDIR)
 
     def getSeries(self, path):
         normalized_path= path.basename().lower()
@@ -83,7 +84,7 @@ class LibraryOrganizerService(service.Service):
         # special case: 's.h.i.e.l.d.'
         match = self.shield_matcher.search(normalized_path)
         if match:
-            series_name = ' '.join([match.group(1).replace('.', ' ').strip(), 
+            series_name = ' '.join([match.group(1).replace('.', ' ').strip(),
                                     match.group(2)])
             return series_name
 
@@ -102,39 +103,70 @@ class LibraryOrganizerService(service.Service):
 
         return None
 
+    def getChildMkv(self, path):
+        counter = 0
+        # XXX: This is really hacky. We are just trying to wait for the children
+        # to be transferred
+        while len(path.listdir()) == 0 and counter < 5:
+            counter += 1
+            time.sleep(1)
+        children  = path.globChildren('*.mkv')
+        if len(children) == 0:
+            return None
+        return children[0]
+
     def processCreate(self, path):
-        if not path.isfile():
+        series_name = self.getSeries(path)
+        if not series_name:
             return
-        self.log.debug('Processing {path}', path=path.path)
+        self.log.debug('CREATE: {p}', p=path.path)
+
+        series_dir = filepath.FilePath(self.library_dir).child(series_name)
+        if not series_dir.exists():
+            self.log.debug('Creating directory {d}', d=series_dir.path)
+            series_dir.createDirectory()
+
+        origin_path = path
+        episode_path = series_dir.child(path.basename())
+
+        if path.isdir():
+            origin_path = self.getChildMkv(path)
+            if not origin_path:
+                return
+            scene_name = path.siblingExtension('.mkv').basename()
+            episode_path = series_dir.child(scene_name)
+
+        if not episode_path.exists():
+            self.log.debug('Linking {orig} : {link}',
+                    orig=origin_path.path,
+                    link=episode_path.path)
+            os.link(origin_path.path, episode_path.path)
+
+    def processDelete(self, path, is_dir):
         series_name = self.getSeries(path)
         if not series_name:
             return
 
-        series_path = os.path.join(self.library_dir, series_name)
-        if not os.path.exists(series_path):
-            self.log.debug('Create directory {path}', path=series_path)
-            os.mkdir(series_path)
-        episode_path = os.path.join(series_path, path.basename())
-        if not os.path.exists(episode_path):
-            self.log.debug('Linking {orig} : {link}', 
-                           orig=path.path,
-                           link=episode_path)
-            os.link(path.path, episode_path)
+        self.log.debug('DELETE: {path}', path=path.path)
+        series_dir = filepath.FilePath(self.library_dir).child(series_name)
+        episode_path = series_dir.child(path.basename())
 
-    def processDelete(self, path):
-        series_name = self.getSeries(path)
-        if not series_name:
-            return
+        if is_dir:
+            episode_path = episode_path.siblingExtension('.mkv')
 
-        series_path = os.path.join(self.library_dir, series_name)
-        episode_path = os.path.join(series_path, path.basename())
-        if os.path.exists(series_path):
-            if os.path.exists(episode_path):
-                self.log.debug('Deleting {path}', path=episode_path)
-                os.remove(episode_path)
-            if len(os.listdir(series_path)) == 0:
-                self.log.debug('Deleting {path}', path=series_path)
-                os.rmdir(series_path)
+        self.log.debug('Episode should be {path}', path=episode_path.path)
+
+        if episode_path.exists():
+            self.log.debug('Deleting {path}', path=episode_path.path)
+            episode_path.remove()
+
+        # Delete the directory if it's empty
+        if len(series_dir.listdir()) == 0:
+            self.log.debug('Removing series directory for {series}', series=series_name)
+            series_dir.remove()
+
+    def sceneDirectory(self, episode_path):
+        return os.path.splitext(episode_path)[0]
 
     def sync(self):
         for dirpath, dirnames, filenames in os.walk(self.library_dir):
@@ -143,9 +175,12 @@ class LibraryOrganizerService(service.Service):
                 for directory in self.watch_dirs:
                     if os.path.exists(os.path.join(directory, episode)):
                         found = True
+                    elif os.path.exists(os.path.join(directory, self.sceneDirectory(episode))):
+                        found = True
                 if not found:
-                    self.processDelete(
-                        filepath.FilePath(os.path.join(dirpath, episode)))
+                    self.log.debug('Could not find {episode}', episode=episode)
+                    delete_path = filepath.FilePath(dirpath).child(episode)
+                    self.processDelete(delete_path, delete_path.isdir())
         for directory in self.watch_dirs:
             for name in os.listdir(directory):
                 self.processCreate(
@@ -153,7 +188,7 @@ class LibraryOrganizerService(service.Service):
 
 
 consoleLogger = logger.FileLogObserver(
-    sys.stdout, 
+    sys.stdout,
     lambda event: logger.formatEventAsClassicLogText(event))
 observer = logger.FilteringLogObserver(
     consoleLogger,
