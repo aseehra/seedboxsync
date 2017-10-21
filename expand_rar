@@ -16,7 +16,7 @@ if [[ ! -a "${SRC}" ]] ; then
 	echo "[${TIME}] to ${SRC}"  >> ${LOG}
 fi
 
-echo "[${TIME}] Evaluating ${SRC}" >> ${LOG}
+#echo "[${TIME}] Evaluating ${SRC}" >> ${LOG}
 if [[ -d "${SRC}" ]] ; then
 	RARFILE=$(find "${SRC}" -maxdepth 1 -name *.rar | head -1)
 	if [[ -f "${RARFILE}" ]] ; then
@@ -28,25 +28,36 @@ fi
 
 # Dropbox copy
 shopt -qs nocasematch
-if [[ "${SRC}" =~ Apprentice ]] ; then
-	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
-	ln "${VIDFILE}" "${ANJU}"
-elif [[ "${SRC}" =~ British.*Bake ]] ; then
-	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
-	ln "${VIDFILE}" "${ANJU}"
-elif [[ "${SRC}" =~ Desi.Rascals ]] ; then
-	VIDFILE=$(find "${SRC}" -iname "*.mp4" -o -iname "*.mkv")
-	ln "${VIDFILE}" "${ANJU}"
-elif [[ "${SRC}" =~ W1A ]] ; then
-	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
-	ln "${VIDFILE}" "${ANJU}"
-elif [[ "${SRC}" =~ Liberty.*London ]] ; then
-	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*.mp4")
-	ln "${VIDFILE}" "${ANJU}"
-elif [[ "${SRC}" =~ Graham ]] ; then
-	VIDFILE=$(find "${EXPND}" -iname "$(basename "${SRC}")*")
+if [[ "${SRC}" =~ Apprentice ]] ||
+		[[ "${SRC}" =~ British.Bake ]] ||
+		[[ "${SRC}" =~ Big.Family.Cooking.Showdown ]] ||
+		[[ "${SRC}" =~ Jamies.Quick.And.Easy.Food ]] ||
+		[[ "${SRC}" =~ Victoria ]] ||
+		[[ "${SRC}" =~ W1A ]] ||
+		[[ "${SRC}" =~ Desi.Rascals ]] ; then
+	VIDFILE="${SRC}"
+	if [[ -d "${SRC}" ]] ; then
+		VIDFILE=$(find "${SRC}" -iname "*.mp4" -o -iname "*.mkv")
+	fi
 	ln "${VIDFILE}" "${ANJU}"
 fi
+
+# if [[ "${SRC}" =~ Apprentice ]] ; then
+	# ln "${SRC}" "${ANJU}"
+# elif [[ "${SRC}" =~ British.*Bake ]] ; then
+	# ln "${SRC}" "${ANJU}"
+# elif [[ "${SRC}" =~ Big.Family.Cooking.Showdown ]] ; then
+	# ln "${SRC}" "${ANJU}"
+# elif [[ "${SRC}" =~ Jamies.Quick.And.Easy.Food ]] ; then
+	# ln "${SRC}" "${ANJU}"
+# elif [[ "${SRC}" =~ Victoria ]] ; then
+	# ln "${SRC}" "${ANJU}"
+# elif [[ "${SRC}" =~ W1A ]] ; then
+	# ln "${SRC}" "${ANJU}"
+# elif [[ "${SRC}" =~ Desi.Rascals ]] ; then
+	# VIDFILE=$(find "${SRC}" -iname "*.mp4" -o -iname "*.mkv")
+	# ln "${VIDFILE}" "${ANJU}"
+# fi
 
 if [[ -e ${FIFO} ]] ; then
 #	echo "[${TIME}] Sending go" >> ${LOG}
