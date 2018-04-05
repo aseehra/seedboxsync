@@ -107,13 +107,11 @@ class LibraryOrganizerService(service.Service):
         counter = 0
         # XXX: This is really hacky. We are just trying to wait for the children
         # to be transferred
-        while len(path.listdir()) == 0 and counter < 5:
+        while (not path.listdir())  and counter < 5:
             counter += 1
             time.sleep(1)
-        children  = path.globChildren('*.mkv')
-        if len(children) == 0:
-            return None
-        return children[0]
+        children = path.globChildren('*.mkv')
+        return children[0] if children else None
 
     def processCreate(self, path):
         series_name = self.getSeries(path)
@@ -161,7 +159,7 @@ class LibraryOrganizerService(service.Service):
             episode_path.remove()
 
         # Delete the directory if it's empty
-        if len(series_dir.listdir()) == 0:
+        if not series_dir.listdir():
             self.log.debug('Removing series directory for {series}', series=series_name)
             series_dir.remove()
 
