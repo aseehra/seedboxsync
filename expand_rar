@@ -32,6 +32,7 @@ if [[ "${SRC}" =~ Apprentice ]] ||
 		[[ "${SRC}" =~ British.Bake ]] ||
 		[[ "${SRC}" =~ Big.Family.Cooking.Showdown ]] ||
 		[[ "${SRC}" =~ Jamies.Quick.And.Easy.Food ]] ||
+		[[ "${SRC}" =~ Nigella.At.My.Table ]] ||
 		[[ "${SRC}" =~ Victoria ]] ||
 		[[ "${SRC}" =~ W1A ]] ||
 		[[ "${SRC}" =~ Desi.Rascals ]] ; then
@@ -40,6 +41,10 @@ if [[ "${SRC}" =~ Apprentice ]] ||
 		VIDFILE=$(find "${SRC}" -iname "*.mp4" -o -iname "*.mkv")
 	fi
 	ln "${VIDFILE}" "${ANJU}"
+fi
+
+if [[ "${SRC}" =~ Formula\.1 ]] ; then
+	cp -al "${SRC}" "${SAMSUNG}"
 fi
 
 # if [[ "${SRC}" =~ Apprentice ]] ; then
