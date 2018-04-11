@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [[ "$1" = "-k" ]] ; then
+	ssh broccoli.whatbox.ca "killall lftp"
+fi
+
+ssh broccoli.whatbox.ca "echo `date` > ~/.local/tmp/seedboxsync.fifo"
