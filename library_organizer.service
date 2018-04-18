@@ -4,13 +4,11 @@ Description = Kodi Library Organizer
 [Service]
 ExecStart = /usr/bin/twistd \
 	--nodaemon \
-	--python=/media/seedboxsync/libraryorganizer.py \
+	--python=/usr/local/share/libraryorganizer.py \
 	--pidfile=
 
 User=media
 Group=media
-
-WorkingDirectory=/media
 
 [Install]
 WantedBy=multi-user.target

@@ -194,7 +194,7 @@ observer = logger.FilteringLogObserver(
 
 application = service.Application('libraryorganizer')
 organizer_service = LibraryOrganizerService(
-    '/media/video/tv',
-    ['/media/video/seedbox', '/media/video/expanded'])
+    '/data/media/tv-seedbox',
+    ['/data/media/seedbox', '/data/media/expanded'])
 organizer_service.setServiceParent(application)
 application.setComponent(twisted.python.log.ILogObserver, observer)
