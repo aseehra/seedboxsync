@@ -50,10 +50,10 @@ class Syncer(object):
         self,
         fifo_path=os.path.expanduser('~/.local/tmp/seedboxsync.fifo'),
         log_path=os.path.expanduser('~/.local/var/log/seedboxsync.log'),
-        sync_settings=[{'local':'~/expanded','remote':'~/expanded','opts':''},
-                       {'local':'~/completed','remote':'~/seedbox','opts':'-I *.avi -I *.mp4 -I *.mkv -I *.m4v -X "*sample[-.]*"'}
+        sync_settings=[{'local':'/home/aseehra/expanded','remote':'~/expanded'},
+                       {'local':'/home/aseehra/completed','remote':'~/seedbox'}
                        ],
-        server='sftp://schrager.thirtyfivemm.com',
+        server='schrager.thirtyfivemm.com',
         ):
 
         # set up for DaemonRunner
@@ -127,13 +127,13 @@ class Syncer(object):
 
     def execute_sync(self):
         for syncitem in self.sync_settings:
-            cmd_base = '''lftp -c "open -e 'mirror -ceR --verbose=1 {opts} {local} {remote}' {server}"'''
+            cmd_base = '''rsync -irmtDF --delete {local}/ {server}:{remote}'''
             cmd_str = cmd_base.format(server=self.server, **syncitem)
             self.log(cmd_str + '\n')
             cmd = shlex.split(cmd_str)
             with open(self.log_path, 'a') as log:
-                lftp = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=log)
-                lftp.wait()
+                rsync = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=log)
+                rsync.wait()
                 log.write("DONE\n")
 
     def log(self, msg):
