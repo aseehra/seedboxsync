@@ -62,14 +62,14 @@ class LibraryOrganizerService(service.Service):
         for directory in self.watch_dirs:
             self.notifier.watch(directory,
                                 mask=mask,
-                                callbacks=[self.handle_library_change])
+                                callbacks=[self.handle_watchdir_change])
         self.sync()
 
     def stopService(self):  # noqa
         self.notifier.stopReading()
 
-    def handle_library_change(self, _, path, mask):
-        self.log.debug('{path}: {mask}',
+    def handle_watchdir_change(self, _, path, mask):
+        self.log.debug('Top level {mask}: {path}',
                        path=path.path,
                        mask=inotify.humanReadableMask(mask))
 
@@ -77,8 +77,6 @@ class LibraryOrganizerService(service.Service):
             self.process_create(path)
         elif mask & inotify.IN_DELETE:
             self.process_delete(path, mask & inotify.IN_ISDIR)
-        elif mask & inotify.IN_MOVED:
-            self.process_moved(path)
 
     def get_series_name(self, path):
         normalized_path = path.basename().lower()
@@ -125,12 +123,12 @@ class LibraryOrganizerService(service.Service):
         series_name = self.get_series_name(path)
         if not series_name:
             return
-        self.log.debug('CREATE: {p}', p=path.path)
 
         if path.isdir():
+            self.log.debug('Processing new subdirectory {p}', p=path.path)
             self.notifier.watch(path,
-                                mask=inotify.IN_MOVED_TO,
-                                callbacks=[self.handle_library_change])
+                                mask=inotify.IN_CREATE | inotify.IN_MOVED_TO,
+                                callbacks=[self.handle_subdir_change])
             children = path.globChildren('*.mkv')
             if children:
                 self.create_link(children[0], series_name, rename=path.basename())
@@ -141,7 +139,10 @@ class LibraryOrganizerService(service.Service):
         else:
             self.create_link(path, series_name)
 
-    def process_moved(self, path):
+    def handle_subdir_change(self, _, path, mask):
+        self.log.debug('Sub-directory {mask}: {p}',
+                       mask=inotify.humanReadableMask(mask),
+                       p=path.path)
         if not path.splitext()[1] in self.tv_extensions:
             return
 
@@ -149,7 +150,6 @@ class LibraryOrganizerService(service.Service):
         if not series_name:
             return
 
-        self.log.debug('MOVED: {p}', p=path.path)
         self.create_link(path, series_name)
         try:
             self.notifier.ignore(path.parent())
@@ -161,7 +161,6 @@ class LibraryOrganizerService(service.Service):
         if not series_name:
             return
 
-        self.log.debug('DELETE: {path}', path=path.path)
         series_dir = self.library_dir.child(series_name)
         episode_path = series_dir.child(path.basename())
 
@@ -172,7 +171,9 @@ class LibraryOrganizerService(service.Service):
             except KeyError as err:
                 self.log.debug(str(err))
 
-        self.log.debug('Episode should be {path}', path=episode_path.path)
+        self.log.debug('Deletion of {p} equates to {d}',
+                       p=path.path,
+                       d=episode_path.path)
 
         if episode_path.exists():
             self.log.debug('Deleting {path}', path=episode_path.path)
@@ -180,7 +181,7 @@ class LibraryOrganizerService(service.Service):
 
         # Delete the directory if it's empty
         if series_dir.exists() and not series_dir.listdir():
-            self.log.debug('Removing series directory for {series}', series=series_name)
+            self.log.debug('Deleting series directory for {series}', series=series_name)
             series_dir.remove()
 
     def sync(self):
@@ -198,13 +199,13 @@ class LibraryOrganizerService(service.Service):
 
         for watch_dir in self.watch_dirs:
             for source in watch_dir.children():
-                self.process_create(source)  # XXX: Ideally want to separate create a bit more.
+                self.process_create(source)
 
 # pylint: disable=invalid-name
 console_logger = logger.FileLogObserver(sys.stdout, logger.formatEventAsClassicLogText)
 observer = logger.FilteringLogObserver(
     console_logger,
-    [logger.LogLevelFilterPredicate(defaultLogLevel=logger.LogLevel.debug)])
+    [logger.LogLevelFilterPredicate(defaultLogLevel=logger.LogLevel.info)])
 
 application = service.Application('libraryorganizer')
 organizer_service = LibraryOrganizerService(
