@@ -77,6 +77,8 @@ class LibraryOrganizerService(service.Service):
             self.process_create(path)
         elif mask & inotify.IN_DELETE:
             self.process_delete(path, mask & inotify.IN_ISDIR)
+        elif mask & inotify.IN_MOVED:
+            self.process_moved(path)
 
     def get_series_name(self, path):
         normalized_path = path.basename().lower()
@@ -113,32 +115,37 @@ class LibraryOrganizerService(service.Service):
         children = path.globChildren('*.mkv')
         return children[0] if children else None
 
+    def create_link(self, original_path, series_name, rename=None):
+        series_dir = self.library_dir.child(series_name)
+        if not series_dir.exists():
+            self.log.debug('Creating directory {d}', d=series_dir.path)
+            series_dir.createDirectory()
+
+        if rename:
+            ext = original_path.splitext()[1]
+            destination_path = series_dir.child(rename).siblingExtension(ext)
+        else:
+            destination_path = series_dir.child(original_path.basename())
+
+        if not destination_path.exists():
+            os.link(original_path.path, destination_path.path)
+
     def process_create(self, path):
         series_name = self.get_series_name(path)
         if not series_name:
             return
         self.log.debug('CREATE: {p}', p=path.path)
 
-        series_dir = self.library_dir.child(series_name)
-        if not series_dir.exists():
-            self.log.debug('Creating directory {d}', d=series_dir.path)
-            series_dir.createDirectory()
-
-        origin_path = path
-        episode_path = series_dir.child(path.basename())
-
         if path.isdir():
-            origin_path = self.get_mkv_from_directory(path)
-            if not origin_path:
-                return
-            scene_name = path.siblingExtension('.mkv').basename()
-            episode_path = series_dir.child(scene_name)
-
-        if not episode_path.exists():
-            self.log.debug('Linking {orig} : {link}',
-                           orig=origin_path.path,
-                           link=episode_path.path)
-            os.link(origin_path.path, episode_path.path)
+            self.notifier.watch(path,
+                                mask=inotify.IN_MOVED_TO,
+                                callbacks=[self.handle_library_change])
+            children = path.globChildren('*.mkv')
+            if children:
+                self.create_link(children[0], series_name, rename=path.basename())
+                self.notifier.ignore(path)
+        else:
+            self.create_link(path, series_name)
 
     def process_delete(self, path, is_dir):
         series_name = self.get_series_name(path)
