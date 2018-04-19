@@ -41,45 +41,45 @@ from twisted import logger
 from twisted.application import service
 from twisted.internet import inotify
 from twisted.python import filepath
-from zope.interface import provider
+
 
 class LibraryOrganizerService(service.Service):
 
     log = logger.Logger('LibraryOrganizerService')
-    default_matcher = re.compile('(.*)\D(s\d+e\d+|\d+x\d+)')
-    shield_matcher = re.compile('(.*)(s.h.i.e.l.d.)')
-    date_matcher = re.compile('^(seth.meyers)')
-    librarians_matcher = re.compile('^the.librarians')
+    default_matcher = re.compile(r'(.*)\D(s\d+e\d+|\d+x\d+)')
+    shield_matcher = re.compile(r'(.*)(s.h.i.e.l.d.)')
+    date_matcher = re.compile(r'^(seth.meyers)')
+    librarians_matcher = re.compile(r'^the.librarians')
 
     def __init__(self, library_dir, watch_dirs):
         self.library_dir = library_dir
         self.watch_dirs = watch_dirs
-
-    def startService(self):
-        mask = inotify.IN_CREATE | inotify.IN_DELETE
         self.notifier = inotify.INotify()
+
+    def startService(self):  # noqa
+        mask = inotify.IN_CREATE | inotify.IN_DELETE
         self.notifier.startReading()
         for directory in self.watch_dirs:
             self.notifier.watch(filepath.FilePath(directory),
                                 mask=mask,
-                                callbacks=[self.onChange])
+                                callbacks=[self.handle_library_change])
         self.sync()
 
-    def stopService(self):
+    def stopService(self):  # noqa
         self.notifier.stopReading()
 
-    def onChange(self, ignored, path, mask):
+    def handle_library_change(self, _, path, mask):
         self.log.debug('{path}: {mask}',
                        path=path.path,
                        mask=inotify.humanReadableMask(mask))
 
         if mask & inotify.IN_CREATE:
-            self.processCreate(path)
+            self.process_create(path)
         elif mask & inotify.IN_DELETE:
-            self.processDelete(path, mask & inotify.IN_ISDIR)
+            self.process_delete(path, mask & inotify.IN_ISDIR)
 
-    def getSeries(self, path):
-        normalized_path= path.basename().lower()
+    def get_series_name(self, path):
+        normalized_path = path.basename().lower()
 
         # special case: 's.h.i.e.l.d.'
         match = self.shield_matcher.search(normalized_path)
@@ -103,18 +103,18 @@ class LibraryOrganizerService(service.Service):
 
         return None
 
-    def getChildMkv(self, path):
+    def get_mkv_from_directory(self, path):
         counter = 0
         # XXX: This is really hacky. We are just trying to wait for the children
         # to be transferred
-        while (not path.listdir())  and counter < 5:
+        while (not path.listdir()) and counter < 5:
             counter += 1
             time.sleep(1)
         children = path.globChildren('*.mkv')
         return children[0] if children else None
 
-    def processCreate(self, path):
-        series_name = self.getSeries(path)
+    def process_create(self, path):
+        series_name = self.get_series_name(path)
         if not series_name:
             return
         self.log.debug('CREATE: {p}', p=path.path)
@@ -128,7 +128,7 @@ class LibraryOrganizerService(service.Service):
         episode_path = series_dir.child(path.basename())
 
         if path.isdir():
-            origin_path = self.getChildMkv(path)
+            origin_path = self.get_mkv_from_directory(path)
             if not origin_path:
                 return
             scene_name = path.siblingExtension('.mkv').basename()
@@ -136,12 +136,12 @@ class LibraryOrganizerService(service.Service):
 
         if not episode_path.exists():
             self.log.debug('Linking {orig} : {link}',
-                    orig=origin_path.path,
-                    link=episode_path.path)
+                           orig=origin_path.path,
+                           link=episode_path.path)
             os.link(origin_path.path, episode_path.path)
 
-    def processDelete(self, path, is_dir):
-        series_name = self.getSeries(path)
+    def process_delete(self, path, is_dir):
+        series_name = self.get_series_name(path)
         if not series_name:
             return
 
@@ -163,34 +163,32 @@ class LibraryOrganizerService(service.Service):
             self.log.debug('Removing series directory for {series}', series=series_name)
             series_dir.remove()
 
-    def sceneDirectory(self, episode_path):
+    def scene_directory(self, episode_path):
         return os.path.splitext(episode_path)[0]
 
     def sync(self):
-        for dirpath, dirnames, filenames in os.walk(self.library_dir):
+        for dirpath, _, filenames in os.walk(self.library_dir):
             for episode in filenames:
                 found = False
                 for directory in self.watch_dirs:
                     if os.path.exists(os.path.join(directory, episode)):
                         found = True
-                    elif os.path.exists(os.path.join(directory, self.sceneDirectory(episode))):
+                    elif os.path.exists(os.path.join(directory, self.scene_directory(episode))):
                         found = True
                 if not found:
                     self.log.debug('Could not find {episode}', episode=episode)
                     delete_path = filepath.FilePath(dirpath).child(episode)
-                    self.processDelete(delete_path, delete_path.isdir())
+                    self.process_delete(delete_path, delete_path.isdir())
         for directory in self.watch_dirs:
             for name in os.listdir(directory):
-                self.processCreate(
-                        filepath.FilePath(os.path.join(directory, name)))
+                self.process_create(
+                    filepath.FilePath(os.path.join(directory, name)))
 
-
-consoleLogger = logger.FileLogObserver(
-    sys.stdout,
-    lambda event: logger.formatEventAsClassicLogText(event))
+# pylint: disable=invalid-name
+console_logger = logger.FileLogObserver(sys.stdout, logger.formatEventAsClassicLogText)
 observer = logger.FilteringLogObserver(
-    consoleLogger,
-    [logger.LogLevelFilterPredicate(defaultLogLevel=logger.LogLevel.info)])
+    console_logger,
+    [logger.LogLevelFilterPredicate(defaultLogLevel=logger.LogLevel.debug)])
 
 application = service.Application('libraryorganizer')
 organizer_service = LibraryOrganizerService(
