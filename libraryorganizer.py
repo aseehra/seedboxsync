@@ -34,7 +34,6 @@
 import os
 import re
 import sys
-import time
 
 import twisted
 from twisted import logger
@@ -55,6 +54,7 @@ class LibraryOrganizerService(service.Service):
         self.library_dir = filepath.FilePath(library_dir)
         self.watch_dirs = [filepath.FilePath(directory) for directory in watch_dirs]
         self.notifier = inotify.INotify()
+        self.tv_extensions = ['.mkv']
 
     def startService(self):  # noqa
         mask = inotify.IN_CREATE | inotify.IN_DELETE
@@ -105,16 +105,6 @@ class LibraryOrganizerService(service.Service):
 
         return None
 
-    def get_mkv_from_directory(self, path):
-        counter = 0
-        # XXX: This is really hacky. We are just trying to wait for the children
-        # to be transferred
-        while (not path.listdir()) and counter < 5:
-            counter += 1
-            time.sleep(1)
-        children = path.globChildren('*.mkv')
-        return children[0] if children else None
-
     def create_link(self, original_path, series_name, rename=None):
         series_dir = self.library_dir.child(series_name)
         if not series_dir.exists():
@@ -128,6 +118,7 @@ class LibraryOrganizerService(service.Service):
             destination_path = series_dir.child(original_path.basename())
 
         if not destination_path.exists():
+            self.log.debug('Linking {o} to {d}', o=original_path.path, d=destination_path.path)
             os.link(original_path.path, destination_path.path)
 
     def process_create(self, path):
@@ -143,9 +134,27 @@ class LibraryOrganizerService(service.Service):
             children = path.globChildren('*.mkv')
             if children:
                 self.create_link(children[0], series_name, rename=path.basename())
-                self.notifier.ignore(path)
+                try:
+                    self.notifier.ignore(path)
+                except KeyError as err:
+                    self.log.debug(str(err))
         else:
             self.create_link(path, series_name)
+
+    def process_moved(self, path):
+        if not path.splitext()[1] in self.tv_extensions:
+            return
+
+        series_name = self.get_series_name(path)
+        if not series_name:
+            return
+
+        self.log.debug('MOVED: {p}', p=path.path)
+        self.create_link(path, series_name)
+        try:
+            self.notifier.ignore(path.parent())
+        except KeyError as err:
+            self.log.debug(str(err))
 
     def process_delete(self, path, is_dir):
         series_name = self.get_series_name(path)
@@ -158,6 +167,10 @@ class LibraryOrganizerService(service.Service):
 
         if is_dir:
             episode_path = episode_path.siblingExtension('.mkv')
+            try:
+                self.notifier.ignore(path)
+            except KeyError as err:
+                self.log.debug(str(err))
 
         self.log.debug('Episode should be {path}', path=episode_path.path)
 
@@ -166,7 +179,7 @@ class LibraryOrganizerService(service.Service):
             episode_path.remove()
 
         # Delete the directory if it's empty
-        if not series_dir.listdir():
+        if series_dir.exists() and not series_dir.listdir():
             self.log.debug('Removing series directory for {series}', series=series_name)
             series_dir.remove()
 
