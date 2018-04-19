@@ -52,15 +52,15 @@ class LibraryOrganizerService(service.Service):
     librarians_matcher = re.compile(r'^the.librarians')
 
     def __init__(self, library_dir, watch_dirs):
-        self.library_dir = library_dir
-        self.watch_dirs = watch_dirs
+        self.library_dir = filepath.FilePath(library_dir)
+        self.watch_dirs = [filepath.FilePath(directory) for directory in watch_dirs]
         self.notifier = inotify.INotify()
 
     def startService(self):  # noqa
         mask = inotify.IN_CREATE | inotify.IN_DELETE
         self.notifier.startReading()
         for directory in self.watch_dirs:
-            self.notifier.watch(filepath.FilePath(directory),
+            self.notifier.watch(directory,
                                 mask=mask,
                                 callbacks=[self.handle_library_change])
         self.sync()
@@ -119,7 +119,7 @@ class LibraryOrganizerService(service.Service):
             return
         self.log.debug('CREATE: {p}', p=path.path)
 
-        series_dir = filepath.FilePath(self.library_dir).child(series_name)
+        series_dir = self.library_dir.child(series_name)
         if not series_dir.exists():
             self.log.debug('Creating directory {d}', d=series_dir.path)
             series_dir.createDirectory()
@@ -146,7 +146,7 @@ class LibraryOrganizerService(service.Service):
             return
 
         self.log.debug('DELETE: {path}', path=path.path)
-        series_dir = filepath.FilePath(self.library_dir).child(series_name)
+        series_dir = self.library_dir.child(series_name)
         episode_path = series_dir.child(path.basename())
 
         if is_dir:
@@ -163,26 +163,22 @@ class LibraryOrganizerService(service.Service):
             self.log.debug('Removing series directory for {series}', series=series_name)
             series_dir.remove()
 
-    def scene_directory(self, episode_path):
-        return os.path.splitext(episode_path)[0]
-
     def sync(self):
-        for dirpath, _, filenames in os.walk(self.library_dir):
-            for episode in filenames:
+        for series in self.library_dir.children():
+            for episode in series.children():
+                episode_base = episode.basename()
+                episode_noext = os.path.splitext(episode_base)[0]
                 found = False
-                for directory in self.watch_dirs:
-                    if os.path.exists(os.path.join(directory, episode)):
-                        found = True
-                    elif os.path.exists(os.path.join(directory, self.scene_directory(episode))):
+                for watch_dir in self.watch_dirs:
+                    if (watch_dir.child(episode_base).exists() or 
+                            watch_dir.child(episode_noext).exists()):
                         found = True
                 if not found:
-                    self.log.debug('Could not find {episode}', episode=episode)
-                    delete_path = filepath.FilePath(dirpath).child(episode)
-                    self.process_delete(delete_path, delete_path.isdir())
-        for directory in self.watch_dirs:
-            for name in os.listdir(directory):
-                self.process_create(
-                    filepath.FilePath(os.path.join(directory, name)))
+                    self.process_delete(episode, episode.isdir())
+
+        for watch_dir in self.watch_dirs:
+            for source in watch_dir.children():
+                self.process_create(source)  # XXX: Ideally want to separate create a bit more.
 
 # pylint: disable=invalid-name
 console_logger = logger.FileLogObserver(sys.stdout, logger.formatEventAsClassicLogText)
