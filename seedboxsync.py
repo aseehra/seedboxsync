@@ -50,8 +50,8 @@ class Syncer(object):
         self,
         fifo_path=os.path.expanduser('~/.local/tmp/seedboxsync.fifo'),
         log_path=os.path.expanduser('~/.local/var/log/seedboxsync.log'),
-        sync_settings=[{'local':'/home/aseehra/expanded','remote':'~/expanded'},
-                       {'local':'/home/aseehra/completed','remote':'~/seedbox'}
+        sync_settings=[{'local':'/home/aseehra/completed','remote':'~/seedbox'},
+                       {'local':'/home/aseehra/expanded','remote':'~/expanded'}
                        ],
         server='schrager.thirtyfivemm.com',
         ):
@@ -127,7 +127,7 @@ class Syncer(object):
 
     def execute_sync(self):
         for syncitem in self.sync_settings:
-            cmd_base = '''rsync -irmtDF --delete {local}/ {server}:{remote}'''
+            cmd_base = '''rsync -irmtDF --partial --inplace --delete {local}/ {server}:{remote}'''
             cmd_str = cmd_base.format(server=self.server, **syncitem)
             self.log(cmd_str + '\n')
             cmd = shlex.split(cmd_str)
