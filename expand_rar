@@ -6,17 +6,15 @@ LOG=$HOME/.local/var/log/posttorrent.log
 FIFO=$HOME/.local/tmp/seedboxsync.fifo
 TIME=$(date +%Y.%m.%d\ %H:%M:%S)
 SRC=$1
-SAMSUNG="$HOME/Dropbox/Samsung Link/Videos"
-ANJU="$HOME/Dropbox/For Anju"
 
 if [[ ! -a "${SRC}" ]] ; then
-	echo "[${TIME}] Changing name from ${SRC}" >> $LOG
+	# echo "[${TIME}] Changing name from ${SRC}" >> $LOG
 	BASE=$(basename "${SRC}")
 	SRC="${COMPL}/${BASE}"
-	echo "[${TIME}] to ${SRC}"  >> ${LOG}
+	# echo "[${TIME}] to ${SRC}"  >> ${LOG}
 fi
 
-#echo "[${TIME}] Evaluating ${SRC}" >> ${LOG}
+# echo "[${TIME}] Evaluating ${SRC}" >> ${LOG}
 if [[ -d "${SRC}" ]] ; then
 	RARFILE=$(find "${SRC}" -maxdepth 1 -name *.rar | head -1)
 	if [[ -f "${RARFILE}" ]] ; then
@@ -31,38 +29,30 @@ shopt -qs nocasematch
 if [[ "${SRC}" =~ Apprentice ]] ||
 		[[ "${SRC}" =~ British.Bake ]] ||
 		[[ "${SRC}" =~ Big.Family.Cooking.Showdown ]] ||
-		[[ "${SRC}" =~ Jamies.Quick.And.Easy.Food ]] ||
+		[[ "${SRC}" =~ Beecham.House ]] ||
+		[[ "${SRC}" =~ Jamie ]] ||
 		[[ "${SRC}" =~ Nigella.At.My.Table ]] ||
 		[[ "${SRC}" =~ Victoria ]] ||
 		[[ "${SRC}" =~ W1A ]] ||
+		[[ "${SRC}" =~ Bollywood ]] ||
+		[[ "${SRC}" =~ Press ]] ||
+		[[ "${SRC}" =~ Queen.of.the.World ]] ||
 		[[ "${SRC}" =~ Desi.Rascals ]] ; then
+	echo "[${TIME}] Uploading ${SRC}" >> ${LOG}
 	VIDFILE="${SRC}"
 	if [[ -d "${SRC}" ]] ; then
 		VIDFILE=$(find "${SRC}" -iname "*.mp4" -o -iname "*.mkv")
 	fi
-	ln "${VIDFILE}" "${ANJU}"
+	ONEDRIVE_DIR="Videos/Anju"
+	rclone --log-file=${LOG} copy -v "${VIDFILE}" "OneDrive:${ONEDRIVE_DIR}" & disown
 fi
 
-if [[ "${SRC}" =~ Formula\.1 ]] ; then
-	cp -al "${SRC}" "${SAMSUNG}"
+if [[ "${SRC}" =~ Formula.*1080 ]] ; then
+	echo "[${TIME}] Uploading ${SRC}" >> ${LOG}
+	ONEDRIVE_DIR="Videos/Dad/$(basename ${SRC})"
+	rclone --log-file=${LOG} mkdir "OneDrive:${ONEDRIVE_DIR}"
+	rclone --log-file=${LOG} copy -v "${SRC}" "OneDrive:${ONEDRIVE_DIR}" & disown
 fi
-
-# if [[ "${SRC}" =~ Apprentice ]] ; then
-	# ln "${SRC}" "${ANJU}"
-# elif [[ "${SRC}" =~ British.*Bake ]] ; then
-	# ln "${SRC}" "${ANJU}"
-# elif [[ "${SRC}" =~ Big.Family.Cooking.Showdown ]] ; then
-	# ln "${SRC}" "${ANJU}"
-# elif [[ "${SRC}" =~ Jamies.Quick.And.Easy.Food ]] ; then
-	# ln "${SRC}" "${ANJU}"
-# elif [[ "${SRC}" =~ Victoria ]] ; then
-	# ln "${SRC}" "${ANJU}"
-# elif [[ "${SRC}" =~ W1A ]] ; then
-	# ln "${SRC}" "${ANJU}"
-# elif [[ "${SRC}" =~ Desi.Rascals ]] ; then
-	# VIDFILE=$(find "${SRC}" -iname "*.mp4" -o -iname "*.mkv")
-	# ln "${VIDFILE}" "${ANJU}"
-# fi
 
 if [[ -e ${FIFO} ]] ; then
 #	echo "[${TIME}] Sending go" >> ${LOG}
