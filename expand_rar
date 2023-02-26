@@ -6,6 +6,7 @@ LOG=$HOME/.local/var/log/posttorrent.log
 FIFO=$HOME/.local/tmp/seedboxsync.fifo
 TIME=$(date +%Y.%m.%d\ %H:%M:%S)
 SRC=$1
+ONEDRIVE=$HOME/OneDrive/Videos
 
 if [[ ! -a "${SRC}" ]] ; then
 	# echo "[${TIME}] Changing name from ${SRC}" >> $LOG
@@ -31,7 +32,7 @@ if [[ "${SRC}" =~ Apprentice ]] ||
 		[[ "${SRC}" =~ Big.Family.Cooking.Showdown ]] ||
 		[[ "${SRC}" =~ Beecham.House ]] ||
 		[[ "${SRC}" =~ Jamie ]] ||
-		[[ "${SRC}" =~ Nigella.At.My.Table ]] ||
+		[[ "${SRC}" =~ Nigellas.Cook ]] ||
 		[[ "${SRC}" =~ Victoria ]] ||
 		[[ "${SRC}" =~ W1A ]] ||
 		[[ "${SRC}" =~ Bollywood ]] ||
@@ -43,19 +44,17 @@ if [[ "${SRC}" =~ Apprentice ]] ||
 	if [[ -d "${SRC}" ]] ; then
 		VIDFILE=$(find "${SRC}" -iname "*.mp4" -o -iname "*.mkv")
 	fi
-	ONEDRIVE_DIR="Videos/Anju"
-	rclone --log-file=${LOG} copy -v "${VIDFILE}" "OneDrive:${ONEDRIVE_DIR}" & disown
+	ln ${VIDFILE} ${ONEDRIVE}
 fi
 
-if [[ "${SRC}" =~ Formula.*1080 ]] ; then
-	echo "[${TIME}] Uploading ${SRC}" >> ${LOG}
-	ONEDRIVE_DIR="Videos/Dad/$(basename ${SRC})"
-	rclone --log-file=${LOG} mkdir "OneDrive:${ONEDRIVE_DIR}"
-	rclone --log-file=${LOG} copy -v "${SRC}" "OneDrive:${ONEDRIVE_DIR}" & disown
-fi
+# if [[ "${SRC}" =~ Formula.*1080 ]] ; then
+	# echo "[${TIME}] Uploading ${SRC}" >> ${LOG}
+	# cp -l "${SRC}" ${ONEDRIVE}
+# fi
 
 if [[ -e ${FIFO} ]] ; then
 #	echo "[${TIME}] Sending go" >> ${LOG}
 	echo "${TIME}" > ${FIFO}
 #	echo "[${TIME}] Done" >> ${LOG}
 fi
+onedrive --synchronize
