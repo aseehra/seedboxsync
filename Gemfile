@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 source 'https://rubygems.org'
 
-gem 'sorbet-runtime'
-gem 'sorbet', group: :development
-gem 'tapioca', require: false, group: [:development, :test]
-gem 'rubocop', group: :development
-gem 'rb-inotify'
 gem 'daemons'
+gem 'rb-inotify'
+gem 'sorbet', group: :development
+gem 'sorbet-runtime'
+gem 'standard', group: %i[development test]
+gem 'tapioca', require: false, group: %i[development test]
