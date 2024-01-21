@@ -1,2 +1,6 @@
 Style/BlockDelimiters:
   EnforcedStyle: semantic
+  AllowedMethods:
+    - sig
+    - proc
+    - it
