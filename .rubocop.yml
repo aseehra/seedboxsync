@@ -4,3 +4,7 @@ Style/BlockDelimiters:
     - sig
     - proc
     - it
+Layout/CaseIndentation:
+  EnforcedStyle: end
+Layout/EndAlignment:
+  EnforcedStyleAlignWith: start_of_line
