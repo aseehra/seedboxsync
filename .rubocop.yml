@@ -8,3 +8,5 @@ Layout/CaseIndentation:
   EnforcedStyle: end
 Layout/EndAlignment:
   EnforcedStyleAlignWith: start_of_line
+Style/StringLiterals:
+  EnforcedStyle: double_quotes

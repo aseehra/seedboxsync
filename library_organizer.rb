@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 # typed: strict
 
-require 'sorbet-runtime'
-require 'daemons'
-require 'logger'
-require 'rb-inotify'
+require "sorbet-runtime"
+require "daemons"
+require "logger"
+require "rb-inotify"
 
 extend T::Sig # rubocop:disable Style/MixinUsage
 
-Daemons.run_proc('library-organizer', { log_output: true }) do
+unless ENV["RACK_ENV"] == "test"
+  Daemons.run_proc("library-organizer", { log_output: true }) do
+  end
 end
 
 # Class
@@ -27,7 +29,7 @@ class LibraryOrganizer
 
     series_name = case normalized
     when /(.*)\D(s\d+e\d+|\d+x\d+)/
-      Regexp.last_match(1)&.gsub('.', ' ')
+      Regexp.last_match(1)&.gsub(".", " ")
     else
       @logger.warn("Could not parse series name: path=#{path}")
       return nil
