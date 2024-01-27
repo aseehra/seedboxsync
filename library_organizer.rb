@@ -8,12 +8,12 @@ require "rb-inotify"
 
 extend T::Sig # rubocop:disable Style/MixinUsage
 
-unless ENV["RACK_ENV"] == "test"
+if __FILE__ == $PROGRAM_NAME
   Daemons.run_proc("library-organizer", { log_output: true }) do
   end
 end
 
-# Class
+# Holder of logic
 class LibraryOrganizer
   extend T::Sig
 

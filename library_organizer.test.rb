@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 # typed: strict
 
-ENV["RACK_ENV"] = "test"
-
 require "minitest/autorun"
 require_relative("./library_organizer")
 
