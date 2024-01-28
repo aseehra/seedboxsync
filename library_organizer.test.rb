@@ -55,5 +55,21 @@ describe "LibraryOrganizer" do
       expected_file = expected_dir / original.basename
       assert(expected_file.file?)
     end
+
+    it "only creates links for mp4 and mkv files" do
+      original = @watch / "Star.Trek.Strange.New.Worlds.S01E01.jpg"
+
+      organizer = LibraryOrganizer.new(@library)
+      organizer.watch([@watch])
+
+      original.open("w") do |file|
+        file.write("test")
+      end
+
+      organizer.process
+
+      expected_dir = @library / "star trek strange new worlds"
+      refute(expected_dir.directory?)
+    end
   end
 end

@@ -73,12 +73,20 @@ class LibraryOrganizer
     series = series_name(path)
     return unless series
 
-    if path.file?
-      series_dir = @library / series
-      series_dir.mkdir(0o770) unless series_dir.directory?
-      (series_dir / path.basename).make_link(path)
-    elsif path.directory?
-      series_dir = @library / series
+    path /= path.basename.sub_ext(".mkv") if path.directory?
+
+    return unless path.file? && %w[.mkv .mp4].include?(path.extname)
+
+    series_dir = @library / series
+    unless series_dir.directory?
+      @logger.debug("Creating directory path=#{series_dir}")
+      series_dir.mkdir(0o770)
     end
+
+    episode = series_dir / path.basename
+    return if episode.exist?
+
+    @logger.debug("Linking file from=#{path} to=#{episode}")
+    episode.make_link(path)
   end
 end
