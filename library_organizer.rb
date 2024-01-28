@@ -17,10 +17,35 @@ end
 class LibraryOrganizer
   extend T::Sig
 
-  sig { params(severity: Integer).void }
-  def initialize(severity = Logger::Severity::DEBUG)
+  sig { params(library: Pathname, log_severity: Integer).void }
+  def initialize(library, log_severity: Logger::Severity::DEBUG)
     @logger = T.let(Logger.new($stdout), Logger)
-    @logger.level = severity
+    @logger.level = log_severity
+    @library = library
+    @notifier = T.let(nil, T.nilable(INotify::Notifier))
+  end
+
+  sig { params(watch_dirs: T::Array[Pathname]).void }
+  def watch(watch_dirs)
+    @notifier&.close
+    @notifier = T.let(INotify::Notifier.new, T.nilable(INotify::Notifier))
+    notifier = T.must(@notifier)
+
+    @logger.debug("watching watch_dirs=#{watch_dirs}")
+
+    watch_dirs.each do |dir|
+      notifier.watch(dir.to_s, :create, &method(:on_create))
+    end
+  end
+
+  sig { void }
+  def process
+    @notifier&.process
+  end
+
+  sig { void }
+  def run
+    @notifier&.run
   end
 
   sig { params(path: Pathname).returns(T.nilable(Pathname)) }
@@ -38,5 +63,22 @@ class LibraryOrganizer
     @logger.debug("Parsed series name: path=#{path} series_name=#{series_name}")
 
     Pathname.new(series_name)
+  end
+
+  sig { params(event: INotify::Event).void }
+  def on_create(event)
+    path = Pathname.new(event.absolute_name)
+    @logger.debug("on_create path=#{path}")
+
+    series = series_name(path)
+    return unless series
+
+    if path.file?
+      series_dir = @library / series
+      series_dir.mkdir(0o770) unless series_dir.directory?
+      (series_dir / path.basename).make_link(path)
+    elsif path.directory?
+      series_dir = @library / series
+    end
   end
 end
