@@ -34,7 +34,7 @@ class LibraryOrganizer
     @logger.debug("watching watch_dirs=#{watch_dirs}")
 
     watch_dirs.each do |dir|
-      notifier.watch(dir.to_s, :create, &method(:on_create))
+      notifier.watch(dir.to_s, *%i[create delete moved_to moved_from], &method(:on_event))
     end
   end
 
@@ -64,6 +64,12 @@ class LibraryOrganizer
 
     Pathname.new(series_name)
   end
+  sig { params(event: INotify::Event).void }
+  def on_event(event)
+    @logger.debug("on_event path=#{event.absolute_name} flags=#{event.flags}")
+    on_create(event) unless (%i[create moved_to] & event.flags).empty?
+    on_delete(event) unless (%i[delete moved_from] & event.flags).empty?
+  end
 
   sig { params(event: INotify::Event).void }
   def on_create(event)
@@ -88,5 +94,30 @@ class LibraryOrganizer
 
     @logger.debug("Linking file from=#{path} to=#{episode}")
     episode.make_link(path)
+  end
+
+  sig { params(event: INotify::Event).void }
+  def on_delete(event)
+    path = Pathname.new(event.absolute_name)
+    @logger.debug("on_delete path=#{path}")
+
+    series = series_name(path)
+    return unless series
+
+    series_dir = @library / series
+    return unless series_dir.directory?
+
+    path = path.sub_ext(".mkv") if event.flags.include?(:isdir)
+    episode = series_dir / path.basename
+
+    return unless episode.file?
+
+    @logger.debug("Deleting file path=#{episode}")
+    episode.delete
+
+    return unless series_dir.children.empty?
+
+    @logger.debug("Deleting directory path=#{series_dir}")
+    series_dir.delete
   end
 end

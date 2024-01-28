@@ -12,15 +12,15 @@ extend T::Sig # rubocop:disable Style/MixinUsage
 
 describe "LibraryOrganizer" do
   before do
-    @dir = T.let(Pathname.new(Dir.mktmpdir), Pathname)
-    @watch = T.let(@dir / "watch", Pathname)
+    @tmpdir = T.let(Pathname.new(Dir.mktmpdir), Pathname)
+    @watch = T.let(@tmpdir / "watch", Pathname)
     @watch.mkdir(0o700)
-    @library = T.let(@dir / "library", Pathname)
+    @library = T.let(@tmpdir / "library", Pathname)
     @library.mkdir(0o700)
   end
 
   after do
-    FileUtils.remove_dir(@dir, true)
+    FileUtils.remove_dir(@tmpdir, true)
   end
 
   describe "#parse_series" do
@@ -70,6 +70,50 @@ describe "LibraryOrganizer" do
 
       expected_dir = @library / "star trek strange new worlds"
       refute(expected_dir.directory?)
+    end
+  end
+
+  describe "on file delete" do
+    before do
+      @series_dir = T.let(@library / "star trek strange new worlds", Pathname)
+      @series_dir.mkdir(0o700)
+
+      @episodes = T.let([
+        @watch / "Star.Trek.Strange.New.Worlds.S01E01.mkv",
+        @watch / "Star.Trek.Strange.New.Worlds.1x02.mp4"
+      ], T::Array[Pathname])
+
+      @episodes.each do |e|
+        e.open("w") do |f|
+          f.write("test")
+        end
+        (@series_dir / e.basename).open("w") do |f|
+          f.write("test")
+        end
+      end
+    end
+
+    it "deletes the library link if multiple things exist in the library" do
+      organizer = LibraryOrganizer.new(@library)
+      organizer.watch([@watch])
+
+      episode = T.must(@episodes.first)
+      episode.delete
+
+      organizer.process
+
+      refute((@series_dir / episode.basename).exist?)
+    end
+
+    it "delete the series directory if no more files exist" do
+      organizer = LibraryOrganizer.new(@library)
+      organizer.watch([@watch])
+
+      @episodes.each(&:delete)
+
+      organizer.process
+
+      refute(@series_dir.exist?)
     end
   end
 end

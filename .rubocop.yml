@@ -8,6 +8,8 @@ Layout/CaseIndentation:
   EnforcedStyle: end
 Layout/EndAlignment:
   EnforcedStyleAlignWith: start_of_line
+Layout/FirstArrayElementIndentation:
+  EnforcedStyle: consistent
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 Metrics/BlockLength:
